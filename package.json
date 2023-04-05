@@ -1,5 +1,5 @@
 {
-  "name": "@spiffre/magiked_espree_loader",
+  "name": "@spiffre/magiked-import-export-loader",
   "scripts": {
     "check": "deno check ./mod.ts",
     "test": "deno test --allow-all",
