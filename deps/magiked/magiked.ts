@@ -1,1 +1,1 @@
-export * from "https://deno.land/x/magiked@v0.5.0/mod.ts"
+export * from /*devlink/ "../../../magiked/mod.ts" /*/ "https://deno.land/x/magiked@v0.5.0/mod.ts" /**/
