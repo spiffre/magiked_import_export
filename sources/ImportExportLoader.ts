@@ -3,34 +3,35 @@ import * as path from "../deps/std/path.ts"
 
 import type { Payload } from "../deps/magiked/magiked.ts"
 
-import { ts, defaultTypescriptLoader } from "../deps/magiked/magiked-typescript-loader.ts"
+import { ts } from "../deps/magiked/magiked-typescript-loader.ts"
 import type { TS } from "../deps/magiked/magiked-typescript-loader.ts"
 
 
 export interface ImportExportPayload extends Payload
 {
 	type: 'importexport'
-	extension: '.ts'  // fixme: this is awkward because although we want loaders/payloads to be mapped on files in 1st pass, it's not necessarily true for subsequent passes
-
-	rootAst: ImportExportGraphNode
+	ast: ImportExportGraphNode
 }
 
+export interface ImportExportLoaderOptions
+{
+	filepath: string
+}
 
-export async function importExportLoader (filepath: string): Promise<ImportExportPayload>
+export async function processorForImportExport (source: TS.SourceFile, options: ImportExportLoaderOptions): Promise<ImportExportPayload>
 {
 	try
 	{
-		const payload = await defaultTypescriptLoader(filepath)
-		const rootAst = await filterImportExport(filepath, payload.rootAst)
+		const ast = await filterImportExport(options.filepath, source)
+		
 		return {
 			type: 'importexport',
-			extension: '.ts',
-			rootAst
+			ast
 		}
 	}
 	catch (error)
 	{
-		throw new Error(`Failed to parse file: ${filepath}`, { cause : error })
+		throw new Error(`Failed to parse file: ${options.filepath}`, { cause : error })
 	}
 }
 

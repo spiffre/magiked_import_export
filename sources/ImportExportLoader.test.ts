@@ -2,9 +2,10 @@ import { assert } from "../deps/std/assert.ts";
 import * as path from "../deps/std/path.ts"
 
 import { Walker } from "../deps/magiked/magiked.ts"
-import type { JsPayload, TsPayload } from "../deps/magiked/magiked-typescript-loader.ts"
+import { processorForTypescript } from "../deps/magiked/magiked-typescript-loader.ts"
+import type { TsPayload } from "../deps/magiked/magiked-typescript-loader.ts"
 
-import { importExportLoader } from "./ImportExportLoader.ts"
+import { processorForImportExport } from "./ImportExportLoader.ts"
 import type { ImportExportPayload } from "./ImportExportLoader.ts"
 
 const DATA_BASE_PATH = "tests/"
@@ -13,13 +14,32 @@ Deno.test("import/export loader", async () =>
 {
 	const dir = path.resolve(DATA_BASE_PATH)
 
-	const walker = new Walker<JsPayload|TsPayload|ImportExportPayload>()
+	const walker = new Walker<TsPayload|ImportExportPayload>()
 	await walker.init(dir,
 	{
-		handlers :
+		async onFileNodeEnter (node, _, filepath)
 		{
-			".js" : { loader : importExportLoader },
-			".ts" : { loader : importExportLoader }
+			// filepath is provided only on first pass
+			assert(filepath)
+			
+			const content = await Deno.readTextFile(filepath)
+
+			if (Walker.matches.glob(filepath, "**/*.{ts,js}"))
+			{
+				node.payload = processorForTypescript(content, { filepath })
+			}
+		}
+	})
+	
+	await walker.traverse(
+	{
+		async onFileNodeEnter (node)
+		{
+			if (node.payload?.type == 'typescript')
+			{
+				const filepath = walker.nodeToPathAsString(node)
+				node.payload = await processorForImportExport(node.payload.ast, { filepath })
+			}
 		}
 	})
 	
@@ -30,7 +50,7 @@ Deno.test("import/export loader", async () =>
 	assert(payload)
 	assert(payload.type == 'importexport')
 	
-	const { imports } = payload.rootAst
+	const { imports } = payload.ast
 	const importAst = imports[0]
 	
 	const localBinding = importAst?.bindings?.[0].localId
