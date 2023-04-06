@@ -1,8 +1,0 @@
-{
-  "name": "@spiffre/magiked-import-export-loader",
-  "scripts": {
-    "check": "deno check ./mod.ts",
-    "test": "deno test --allow-all",
-    "testw": "deno test --allow-all --watch"
-  }
-}
