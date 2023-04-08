@@ -1,10 +1,9 @@
-import { assert } from "../deps/std/assert.ts"
-import * as path from "../deps/std/path.ts"
+import * as path from '../deps/std/path.ts'
 
-import type { Payload } from "../deps/magiked/magiked.ts"
+import type { Payload } from '../deps/magiked/magiked.ts'
 
-import { ts } from "../deps/magiked/magiked-typescript-loader.ts"
-import type { TS } from "../deps/magiked/magiked-typescript-loader.ts"
+import { ts } from '../deps/magiked/magiked-typescript-loader.ts'
+import type { TS } from '../deps/magiked/magiked-typescript-loader.ts'
 
 
 export interface ImportExportPayload extends Payload
@@ -45,7 +44,7 @@ interface ModuleSpecifier
 	isPackageId?: boolean;
 }
 
-interface ImportMetaAst 
+interface ImportMetaAst extends MetaAst
 {
 	defaultId?: string;
 	namespaceId?: string;
@@ -106,17 +105,17 @@ async function filterImportExport (filepath: string, source: TS.SourceFile): Pro
 		// For imports
 		if (statement.kind == ts.SyntaxKind.ImportDeclaration)
 		{
-			const importNodes = source.statements.filter(ts.isImportDeclaration)
+			const importDeclarations = source.statements.filter(ts.isImportDeclaration)
 
-			for (const importNode of importNodes)
+			for (const importDeclaration of importDeclarations)
 			{
-				const moduleSpecifierText = (importNode.moduleSpecifier as ts.StringLiteral).text
+				const moduleSpecifierText = (importDeclaration.moduleSpecifier as ts.StringLiteral).text
 
 				const prefixRegex = /^(copy:|webworker:)/
 				const prefixMatch = moduleSpecifierText.match(prefixRegex)
 				const prefix = prefixMatch ? prefixMatch[0] : undefined
 				const specifier = moduleSpecifierText.replace(prefixRegex, '')
-				const isPackageId = !specifier.startsWith("./") && !specifier.startsWith("../")
+				const isPackageId = !specifier.startsWith('./') && !specifier.startsWith('../')
 				const resolvedSpecifier = isPackageId ? specifier : await resolveModuleSpecifier( dirname, specifier )
 
 				const moduleSpecifier: ModuleSpecifier =
@@ -126,26 +125,32 @@ async function filterImportExport (filepath: string, source: TS.SourceFile): Pro
 					prefix,
 				};
 				
-				const importCase: ImportMetaAst = { moduleSpecifier }
-				
-				if (importNode.importClause)
+				const loc =
 				{
-					const { name, namedBindings } = importNode.importClause;
+					start : importDeclaration.pos,
+					end : importDeclaration.end
+				}
+				
+				const importAstNode: ImportMetaAst = { moduleSpecifier, loc }
+				
+				if (importDeclaration.importClause)
+				{
+					const { name, namedBindings } = importDeclaration.importClause;
 			
 					if (name)
 					{
-						importCase.defaultId = name.text;
+						importAstNode.defaultId = name.text;
 					}
 			
 					if (namedBindings)
 					{
 						if (ts.isNamespaceImport(namedBindings))
 						{
-							importCase.namespaceId = namedBindings.name.text;
+							importAstNode.namespaceId = namedBindings.name.text;
 						}
 						else if (ts.isNamedImports(namedBindings))
 						{
-							importCase.named = namedBindings.elements.map( (element) =>
+							importAstNode.named = namedBindings.elements.map( (element) =>
 							{
 								return {
 									symbolId: element.propertyName?.text || element.name.text,
@@ -156,7 +161,7 @@ async function filterImportExport (filepath: string, source: TS.SourceFile): Pro
 					}
 				}
 			
-				iegn.imports.push(importCase)
+				iegn.imports.push(importAstNode)
 			}
 		}
 	}

@@ -1,16 +1,16 @@
-import { assert, assertEquals } from "../deps/std/assert.ts";
-import * as path from "../deps/std/path.ts"
+import { assert, assertEquals } from '../deps/std/assert.ts'
+import * as path from '../deps/std/path.ts'
 
-import { Walker } from "../deps/magiked/magiked.ts"
-import { processorForTypescript } from "../deps/magiked/magiked-typescript-loader.ts"
-import type { TsPayload } from "../deps/magiked/magiked-typescript-loader.ts"
+import { Walker } from '../deps/magiked/magiked.ts'
+import { processorForTypescript } from '../deps/magiked/magiked-typescript-loader.ts'
+import type { TsPayload } from '../deps/magiked/magiked-typescript-loader.ts'
 
-import { processorForImportExport } from "./ImportExportLoader.ts"
-import type { ImportExportPayload } from "./ImportExportLoader.ts"
+import { processorForImportExport } from './ImportExportLoader.ts'
+import type { ImportExportPayload } from './ImportExportLoader.ts'
 
-const DATA_BASE_PATH = "tests/"
+const DATA_BASE_PATH = 'tests/'
 
-Deno.test("import/export loader", async () =>
+Deno.test('import/export loader', async () =>
 {
 	const dir = path.resolve(DATA_BASE_PATH)
 
@@ -24,7 +24,7 @@ Deno.test("import/export loader", async () =>
 			
 			const content = await Deno.readTextFile(filepath)
 
-			if (Walker.matches.glob(filepath, "**/*.{ts,js}"))
+			if (Walker.matches.glob(filepath, '**/*.{ts,js}'))
 			{
 				node.payload = processorForTypescript(content, { filepath })
 			}
@@ -53,11 +53,13 @@ Deno.test("import/export loader", async () =>
 	const { imports } = payload.ast
 	const importAst = imports[0]
 	
-	assertEquals(importAst.named, [{ symbolId: "add", localId : undefined }]);
+	assertEquals(importAst.named, [{ symbolId : 'add', localId : undefined }])
+	assertEquals(importAst.loc, { start : 0, end : 29 })
+	
 	assertEquals(importAst.moduleSpecifier,
 	{
-		specifier: "module",
-		prefix: undefined,
-		isPackageId: true,
+		specifier : 'module',
+		prefix : undefined,
+		isPackageId : true,
 	})
 })
