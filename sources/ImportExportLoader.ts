@@ -37,24 +37,11 @@ export async function processorForImportExport (source: TS.SourceFile, options: 
 
 // HELPERS
 
-interface ModuleSpecifier
+export interface ModuleSpecifier
 {
 	prefix?: string;
 	specifier: string;
 	isPackageId?: boolean;
-}
-
-interface ImportMetaAst extends MetaAst
-{
-	defaultId?: string;
-	namespaceId?: string;
-	named?:
-	{
-		symbolId: string;
-		localId?: string;
-	}[];
-	
-	moduleSpecifier: ModuleSpecifier;
 }
 
 export interface MetaAst
@@ -64,6 +51,21 @@ export interface MetaAst
 		start: number
 		end: number
 	}
+}
+
+export interface ImportMetaAst extends MetaAst
+{
+	type: 'ImportMetaAst'
+	
+	defaultId?: string;
+	namespaceId?: string;
+	named?:
+	{
+		symbolId: string;
+		localId?: string;
+	}[];
+	
+	moduleSpecifier: ModuleSpecifier;
 }
 
 export interface ExportMetaAst extends MetaAst
@@ -131,7 +133,12 @@ async function filterImportExport (filepath: string, source: TS.SourceFile): Pro
 					end : importDeclaration.end
 				}
 				
-				const importAstNode: ImportMetaAst = { moduleSpecifier, loc }
+				const importAstNode: ImportMetaAst =
+				{
+					type : 'ImportMetaAst',
+					moduleSpecifier,
+					loc
+				}
 				
 				if (importDeclaration.importClause)
 				{
