@@ -45,7 +45,7 @@ interface ModuleSpecifier
 	isPackageId?: boolean;
 }
 
-interface ImportMetaAst
+interface ImportMetaAst 
 {
 	defaultId?: string;
 	namespaceId?: string;
@@ -56,6 +56,37 @@ interface ImportMetaAst
 	}[];
 	
 	moduleSpecifier: ModuleSpecifier;
+}
+
+export interface MetaAst
+{
+	loc:
+	{
+		start: number
+		end: number
+	}
+}
+
+export interface ExportMetaAst extends MetaAst
+{
+	type: 'ExportMetaAst'
+	
+	symbolId: string
+}
+
+export interface ReexportMetaAst extends MetaAst
+{
+	type: 'ReexportMetaAst'
+	
+	path: string
+	symbolId: string
+}
+
+export interface ImportExportGraphNode
+{
+	imports: ImportMetaAst[]
+	exports: ExportMetaAst[]
+	reexports: ReexportMetaAst[]
 }
 
 async function filterImportExport (filepath: string, source: TS.SourceFile): Promise<ImportExportGraphNode>
@@ -76,8 +107,8 @@ async function filterImportExport (filepath: string, source: TS.SourceFile): Pro
 		if (statement.kind == ts.SyntaxKind.ImportDeclaration)
 		{
 			const importNodes = source.statements.filter(ts.isImportDeclaration)
-			
-			const importCases: ImportMetaAst[] = importNodes.map( (importNode) =>
+
+			for (const importNode of importNodes)
 			{
 				const moduleSpecifierText = (importNode.moduleSpecifier as ts.StringLiteral).text
 
@@ -85,12 +116,14 @@ async function filterImportExport (filepath: string, source: TS.SourceFile): Pro
 				const prefixMatch = moduleSpecifierText.match(prefixRegex)
 				const prefix = prefixMatch ? prefixMatch[0] : undefined
 				const specifier = moduleSpecifierText.replace(prefixRegex, '')
+				const isPackageId = !specifier.startsWith("./") && !specifier.startsWith("../")
+				const resolvedSpecifier = isPackageId ? specifier : await resolveModuleSpecifier( dirname, specifier )
 
 				const moduleSpecifier: ModuleSpecifier =
 				{
-					specifier: specifier,
-					isPackageId: !specifier.startsWith("./") && !specifier.startsWith("../"),
-					prefix: prefix,
+					specifier : resolvedSpecifier,
+					isPackageId,
+					prefix,
 				};
 				
 				const importCase: ImportMetaAst = { moduleSpecifier }
@@ -123,80 +156,19 @@ async function filterImportExport (filepath: string, source: TS.SourceFile): Pro
 					}
 				}
 			
-				return importCase;
-			})
-			
-			iegn.imports.push(...importCases)
+				iegn.imports.push(importCase)
+			}
 		}
 	}
 	
 	return iegn
 }
 
-export interface MetaAst
-{
-	loc:
-	{
-		start: number
-		end: number
-	}
-}
-
-interface ImportBinding
-{
-	localId: string				// The local id of the named import
-	symbolId?: string			// The id of the exported named import, if there was renaming
-}
-
-interface BaseImportMetaAst extends MetaAst
-{
-	path: string				// The module specifier
-	
-	defaultLocalId?: string		// Id of the local symbol importing the default export, if present
-	bindings?: ImportBinding[]	// Named imports, if present
-}
-
-export interface PackageImportMetaAst extends BaseImportMetaAst
-{
-	type: 'ImportMetaAst'
-	kind: 'Package'
-}
-
-export interface FileImportMetaAst extends BaseImportMetaAst
-{
-	type: 'ImportMetaAst'
-	kind: 'File'
-}
-
-//export type ImportMetaAst = PackageImportMetaAst | FileImportMetaAst
-
-export interface ExportMetaAst extends MetaAst
-{
-	type: 'ExportMetaAst'
-	
-	symbolId: string
-}
-
-export interface ReexportMetaAst extends MetaAst
-{
-	type: 'ReexportMetaAst'
-	
-	path: string
-	symbolId: string
-}
-
-export interface ImportExportGraphNode
-{
-	imports: ImportMetaAst[]
-	exports: ExportMetaAst[]
-	reexports: ReexportMetaAst[]
-}
 
 // HELPERS
 
 const VALID_EXTENSIONS = [ '.js', '.ts', '.jsx', '.tsx' ]
 
-/*
 async function resolveModuleSpecifier (dirname: string, moduleSpecifier: string): Promise<string>
 {
 	// Check if the specifier directly points do a file
@@ -245,51 +217,3 @@ async function resolveModuleSpecifier (dirname: string, moduleSpecifier: string)
 	
 	throw new Error(`Failed to resolve module specifier to a file with a supported extension:\n${moduleSpecifier}`)
 }
-
-function qualifyModuleSpecifier (moduleSpecifier: string): ModuleSpecifier
-{
-	// If the module specifier starts with one of the supported prefixes
-	for (const prefix of Object.values(PREFIX))
-	{
-		if (moduleSpecifier.startsWith(prefix))
-		{
-			return {
-				isPackage : false,
-				actualPath : moduleSpecifier.substring(prefix.length),
-				prefix
-			}
-		}
-	}
-	
-	// If the module specifier is not a relative path
-	if (moduleSpecifier[0] != '.')
-	{
-		return {
-			isPackage : true,
-			actualPath : moduleSpecifier
-		}
-	}
-	
-	return {
-		isPackage : false,
-		actualPath : moduleSpecifier
-	}
-}
-*/
-
-/*
-const PREFIX =
-{
-	COPY : 'copy:',
-	WEBWORKER : 'webworker:',
-} as const
-
-type ValueOf<T> = T[keyof T]
-*/
-
-//interface ModuleSpecifier
-//{
-//	isPackage: boolean
-//	actualPath: string
-//	prefix?: ValueOf<typeof PREFIX>
-//}
