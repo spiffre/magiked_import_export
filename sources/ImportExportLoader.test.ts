@@ -1,4 +1,4 @@
-import { assert } from "../deps/std/assert.ts";
+import { assert, assertEquals } from "../deps/std/assert.ts";
 import * as path from "../deps/std/path.ts"
 
 import { Walker } from "../deps/magiked/magiked.ts"
@@ -53,9 +53,10 @@ Deno.test("import/export loader", async () =>
 	const { imports } = payload.ast
 	const importAst = imports[0]
 	
-	const localBinding = importAst?.bindings?.[0].localId
-	assert(localBinding && localBinding == 'add')
-	
-	assert(importAst.kind == 'Package')
-	assert(importAst.path == 'module')
-});
+	assertEquals(importAst.named, [{ symbolId: "add", localId : undefined }]);
+	assertEquals(importAst.moduleSpecifier,
+	{
+		specifier: "module",
+		isPackageId: true,
+	})
+})

@@ -38,6 +38,26 @@ export async function processorForImportExport (source: TS.SourceFile, options: 
 
 // HELPERS
 
+interface ModuleSpecifier
+{
+	prefix?: string;
+	specifier: string;
+	isPackageId?: boolean;
+}
+
+interface ImportMetaAst
+{
+	defaultId?: string;
+	namespaceId?: string;
+	named?:
+	{
+		symbolId: string;
+		localId?: string;
+	}[];
+	
+	moduleSpecifier: ModuleSpecifier;
+}
+
 async function filterImportExport (filepath: string, source: TS.SourceFile): Promise<ImportExportGraphNode>
 {
 	const dirname = path.dirname(filepath)
@@ -55,74 +75,51 @@ async function filterImportExport (filepath: string, source: TS.SourceFile): Pro
 		// For imports
 		if (statement.kind == ts.SyntaxKind.ImportDeclaration)
 		{
-			const st = statement as TS.ImportDeclaration
+			const importNodes = source.statements.filter(ts.isImportDeclaration)
 			
-			const rawModuleSpecifier = (st.moduleSpecifier as TS.StringLiteral).text
-			const qualifiedModuleSpecifier = qualifyModuleSpecifier(rawModuleSpecifier)  // fixme: prefixes such as copy: prolly should be stored in FileImportMetaAst
-			const moduleSpecifier = qualifiedModuleSpecifier.isPackage
-										? qualifiedModuleSpecifier.actualPath
-										: await resolveModuleSpecifier(dirname, qualifiedModuleSpecifier.actualPath)
-			
-			let bindings: ImportBinding[] | undefined
-			let defaultLocalId
-			
-			// Side-effect imports don't have a clause
-			const clause = st.importClause
-			if (clause)
+			const importCases: ImportMetaAst[] = importNodes.map( (importNode) =>
 			{
-				if (clause.namedBindings)
+				const importCase: ImportMetaAst =
 				{
-					bindings = []
-					
-					const namedBindings = clause.namedBindings as TS.NamedImports
-					namedBindings.elements.forEach( (el) =>
+					moduleSpecifier:
 					{
-						const localId = el.name.escapedText.toString()
-						const symbolId = el.propertyName?.escapedText.toString()
-						
-						assert(bindings)
-						bindings.push({ localId, symbolId })
-					})
+						specifier: (importNode.moduleSpecifier as ts.StringLiteral).text,
+						isPackageId: !(/^[.\/]/.test((importNode.moduleSpecifier as ts.StringLiteral).text)),
+					}
 				}
-				
-				if (clause.name)
-				{
-					defaultLocalId = clause.name.escapedText.toString()
-				}
-			}
 			
-			if (qualifiedModuleSpecifier.isPackage)
-			{
-				const importNode: PackageImportMetaAst =
+				if (importNode.importClause)
 				{
-					type : "ImportMetaAst",
-					kind : "Package",
-
-					path : moduleSpecifier,
-					loc : { start : st.pos, end : st.end },
-					
-					bindings,
-					defaultLocalId
+					const { name, namedBindings } = importNode.importClause;
+			
+					if (name)
+					{
+						importCase.defaultId = name.text;
+					}
+			
+					if (namedBindings)
+					{
+						if (ts.isNamespaceImport(namedBindings))
+						{
+							importCase.namespaceId = namedBindings.name.text;
+						}
+						else if (ts.isNamedImports(namedBindings))
+						{
+							importCase.named = namedBindings.elements.map( (element) =>
+							{
+								return {
+									symbolId: element.propertyName?.text || element.name.text,
+									localId: element.propertyName ? element.name.text : undefined,
+								}
+							})
+						}
+					}
 				}
-				
-				iegn.imports.push(importNode)
-			}
-			else
-			{
-				const importNode: FileImportMetaAst =
-				{
-					type : "ImportMetaAst",
-					kind : "File",
-
-					path : moduleSpecifier,
-					loc : { start : st.pos, end : st.end },
-					
-					bindings,
-					defaultLocalId
-				}
-				
-				iegn.imports.push(importNode)
-			}
+			
+				return importCase;
+			})
+			
+			iegn.imports.push(...importCases)
 		}
 	}
 	
@@ -164,7 +161,7 @@ export interface FileImportMetaAst extends BaseImportMetaAst
 	kind: 'File'
 }
 
-export type ImportMetaAst = PackageImportMetaAst | FileImportMetaAst
+//export type ImportMetaAst = PackageImportMetaAst | FileImportMetaAst
 
 export interface ExportMetaAst extends MetaAst
 {
@@ -192,6 +189,7 @@ export interface ImportExportGraphNode
 
 const VALID_EXTENSIONS = [ '.js', '.ts', '.jsx', '.tsx' ]
 
+/*
 async function resolveModuleSpecifier (dirname: string, moduleSpecifier: string): Promise<string>
 {
 	// Check if the specifier directly points do a file
@@ -240,7 +238,9 @@ async function resolveModuleSpecifier (dirname: string, moduleSpecifier: string)
 	
 	throw new Error(`Failed to resolve module specifier to a file with a supported extension:\n${moduleSpecifier}`)
 }
+*/
 
+/*
 const PREFIX =
 {
 	COPY : 'copy:',
@@ -248,14 +248,16 @@ const PREFIX =
 } as const
 
 type ValueOf<T> = T[keyof T]
+*/
 
-interface ModuleSpecifier
-{
-	isPackage: boolean
-	actualPath: string
-	prefix?: ValueOf<typeof PREFIX>
-}
+//interface ModuleSpecifier
+//{
+//	isPackage: boolean
+//	actualPath: string
+//	prefix?: ValueOf<typeof PREFIX>
+//}
 
+/*
 function qualifyModuleSpecifier (moduleSpecifier: string): ModuleSpecifier
 {
 	// If the module specifier starts with one of the supported prefixes
@@ -285,3 +287,4 @@ function qualifyModuleSpecifier (moduleSpecifier: string): ModuleSpecifier
 		actualPath : moduleSpecifier
 	}
 }
+*/
