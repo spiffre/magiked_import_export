@@ -79,15 +79,22 @@ async function filterImportExport (filepath: string, source: TS.SourceFile): Pro
 			
 			const importCases: ImportMetaAst[] = importNodes.map( (importNode) =>
 			{
-				const importCase: ImportMetaAst =
+				const moduleSpecifierText = (importNode.moduleSpecifier as ts.StringLiteral).text
+
+				const prefixRegex = /^(copy:|webworker:)/
+				const prefixMatch = moduleSpecifierText.match(prefixRegex)
+				const prefix = prefixMatch ? prefixMatch[0] : undefined
+				const specifier = moduleSpecifierText.replace(prefixRegex, '')
+
+				const moduleSpecifier: ModuleSpecifier =
 				{
-					moduleSpecifier:
-					{
-						specifier: (importNode.moduleSpecifier as ts.StringLiteral).text,
-						isPackageId: !(/^[.\/]/.test((importNode.moduleSpecifier as ts.StringLiteral).text)),
-					}
-				}
-			
+					specifier: specifier,
+					isPackageId: !specifier.startsWith("./") && !specifier.startsWith("../"),
+					prefix: prefix,
+				};
+				
+				const importCase: ImportMetaAst = { moduleSpecifier }
+				
 				if (importNode.importClause)
 				{
 					const { name, namedBindings } = importNode.importClause;
@@ -238,26 +245,7 @@ async function resolveModuleSpecifier (dirname: string, moduleSpecifier: string)
 	
 	throw new Error(`Failed to resolve module specifier to a file with a supported extension:\n${moduleSpecifier}`)
 }
-*/
 
-/*
-const PREFIX =
-{
-	COPY : 'copy:',
-	WEBWORKER : 'webworker:',
-} as const
-
-type ValueOf<T> = T[keyof T]
-*/
-
-//interface ModuleSpecifier
-//{
-//	isPackage: boolean
-//	actualPath: string
-//	prefix?: ValueOf<typeof PREFIX>
-//}
-
-/*
 function qualifyModuleSpecifier (moduleSpecifier: string): ModuleSpecifier
 {
 	// If the module specifier starts with one of the supported prefixes
@@ -288,3 +276,20 @@ function qualifyModuleSpecifier (moduleSpecifier: string): ModuleSpecifier
 	}
 }
 */
+
+/*
+const PREFIX =
+{
+	COPY : 'copy:',
+	WEBWORKER : 'webworker:',
+} as const
+
+type ValueOf<T> = T[keyof T]
+*/
+
+//interface ModuleSpecifier
+//{
+//	isPackage: boolean
+//	actualPath: string
+//	prefix?: ValueOf<typeof PREFIX>
+//}

@@ -57,6 +57,7 @@ Deno.test("import/export loader", async () =>
 	assertEquals(importAst.moduleSpecifier,
 	{
 		specifier: "module",
+		prefix: undefined,
 		isPackageId: true,
 	})
 })
