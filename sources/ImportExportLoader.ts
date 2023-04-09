@@ -21,7 +21,7 @@ export async function processorForImportExport (source: TS.SourceFile, options: 
 {
 	try
 	{
-		const ast = await filterImportExport(options.filepath, source)
+		const ast = await parseImportExportStatements(source, options.filepath)
 		
 		return {
 			type: 'importexport',
@@ -39,9 +39,9 @@ export async function processorForImportExport (source: TS.SourceFile, options: 
 
 export interface ModuleSpecifier
 {
-	prefix?: string;
-	specifier: string;
-	isPackageId?: boolean;
+	prefix?: string
+	specifier: string
+	isPackageId?: boolean
 }
 
 export interface MetaAst
@@ -57,15 +57,15 @@ export interface ImportMetaAst extends MetaAst
 {
 	type: 'ImportMetaAst'
 	
-	defaultId?: string;
-	namespaceId?: string;
+	default?: string
+	namespace?: string
 	named?:
 	{
-		symbolId: string;
-		localId?: string;
-	}[];
+		name: string
+		alias?: string
+	}[]
 	
-	moduleSpecifier: ModuleSpecifier;
+	moduleSpecifier: ModuleSpecifier
 }
 
 export interface ExportMetaAst extends MetaAst
@@ -90,7 +90,7 @@ export interface ImportExportGraphNode
 	reexports: ReexportMetaAst[]
 }
 
-async function filterImportExport (filepath: string, source: TS.SourceFile): Promise<ImportExportGraphNode>
+export async function parseImportExportStatements (source: TS.SourceFile, filepath: string): Promise<ImportExportGraphNode>
 {
 	const dirname = path.dirname(filepath)
 	
@@ -107,10 +107,8 @@ async function filterImportExport (filepath: string, source: TS.SourceFile): Pro
 		// For imports
 		if (statement.kind == ts.SyntaxKind.ImportDeclaration)
 		{
-			const importDeclarations = source.statements.filter(ts.isImportDeclaration)
+			const importDeclaration = statement as TS.ImportDeclaration
 
-			for (const importDeclaration of importDeclarations)
-			{
 				const moduleSpecifierText = (importDeclaration.moduleSpecifier as ts.StringLiteral).text
 
 				const prefixRegex = /^(copy:|webworker:)/
@@ -125,7 +123,7 @@ async function filterImportExport (filepath: string, source: TS.SourceFile): Pro
 					specifier : resolvedSpecifier,
 					isPackageId,
 					prefix,
-				};
+				}
 				
 				const loc =
 				{
@@ -142,26 +140,26 @@ async function filterImportExport (filepath: string, source: TS.SourceFile): Pro
 				
 				if (importDeclaration.importClause)
 				{
-					const { name, namedBindings } = importDeclaration.importClause;
+					const { name, namedBindings } = importDeclaration.importClause
 			
 					if (name)
 					{
-						importAstNode.defaultId = name.text;
+						importAstNode.default = name.text
 					}
 			
 					if (namedBindings)
 					{
 						if (ts.isNamespaceImport(namedBindings))
 						{
-							importAstNode.namespaceId = namedBindings.name.text;
+							importAstNode.namespace = namedBindings.name.text
 						}
 						else if (ts.isNamedImports(namedBindings))
 						{
 							importAstNode.named = namedBindings.elements.map( (element) =>
 							{
 								return {
-									symbolId: element.propertyName?.text || element.name.text,
-									localId: element.propertyName ? element.name.text : undefined,
+									name : element.propertyName?.text || element.name.text,
+									alias : element.propertyName ? element.name.text : undefined,
 								}
 							})
 						}
@@ -169,11 +167,23 @@ async function filterImportExport (filepath: string, source: TS.SourceFile): Pro
 				}
 			
 				iegn.imports.push(importAstNode)
-			}
+			
 		}
 	}
 	
 	return iegn
+}
+
+export async function parseImportExportStatementsFromString (source: string, filepath: string): Promise<ImportExportGraphNode>
+{
+	const sourceAst = ts.createSourceFile(
+		filepath,
+		source,
+		ts.ScriptTarget.Latest,
+		true
+	)
+	
+	return await parseImportExportStatements(sourceAst, filepath)
 }
 
 
