@@ -210,7 +210,7 @@ Deno.test('Import for side-effect', async () =>
 	})
 })
 
-// The way TypeScript parses this example is insane amnd it doesn't matter because no-one uses it
+// The way TypeScript parses this example is insane and it doesn't matter because no-one uses it
 //Deno.tes'import { "string name" as alias } from "module"'ample 8', { only : true }, async () =>
 //{
 //	const sourceCode = 'import { "string name" as alias } from "module"'
@@ -359,7 +359,8 @@ Deno.test('Export multiple variable declaration with assignment', async () =>  /
 	const result = await parseImportExportStatementsFromString(sourceCode, 'whatever')
 	const exportAst = result.exports[0]
 
-	assertEquals(exportAst.type, "ExportDeclarationAst")
+	assert(exportAst.type == "ExportDeclarationAst")
+	
 	assertEquals(exportAst.kind, "variable")
 	assertEquals(exportAst.isDefault, false)
 	assertEquals(exportAst.declarations,
@@ -375,7 +376,8 @@ Deno.test('Export function declaration', async () =>
 	const result = await parseImportExportStatementsFromString(sourceCode, 'whatever')
 	const exportAst = result.exports[0]
 
-	assertEquals(exportAst.type, "ExportDeclarationAst")
+	assert(exportAst.type == "ExportDeclarationAst")
+	
 	assertEquals(exportAst.kind, "function")
 	assertEquals(exportAst.isDefault, false)
 	assertEquals(exportAst.declarations,
@@ -394,7 +396,8 @@ Deno.test('Export generator function declaration', async () =>
 	const result = await parseImportExportStatementsFromString(sourceCode, 'whatever')
 	const exportAst = result.exports[0]
 
-	assertEquals(exportAst.type, "ExportDeclarationAst")
+	assert(exportAst.type == "ExportDeclarationAst")
+	
 	assertEquals(exportAst.kind, "function*")
 	assertEquals(exportAst.isDefault, false)
 	assertEquals(exportAst.declarations,
@@ -413,7 +416,8 @@ Deno.test('Export class declaration', async () =>
 	const result = await parseImportExportStatementsFromString(sourceCode, 'whatever')
 	const exportAst = result.exports[0]
 
-	assertEquals(exportAst.type, "ExportDeclarationAst")
+	assert(exportAst.type == "ExportDeclarationAst")
+	
 	assertEquals(exportAst.kind, "class")
 	assertEquals(exportAst.isDefault, false)
 	assertEquals(exportAst.declarations,
@@ -435,7 +439,8 @@ Deno.test('Export function declaration as default', async () =>
 	const result = await parseImportExportStatementsFromString(sourceCode, 'whatever')
 	const exportAst = result.exports[0]
 
-	assertEquals(exportAst.type, "ExportDeclarationAst")
+	assert(exportAst.type == "ExportDeclarationAst")
+	
 	assertEquals(exportAst.kind, "function")
 	assertEquals(exportAst.isDefault, true)
 	assertEquals(exportAst.declarations,
@@ -454,7 +459,8 @@ Deno.test('Export generator function declaration as default', async () =>
 	const result = await parseImportExportStatementsFromString(sourceCode, 'whatever')
 	const exportAst = result.exports[0]
 
-	assertEquals(exportAst.type, "ExportDeclarationAst")
+	assert(exportAst.type == "ExportDeclarationAst")
+	
 	assertEquals(exportAst.kind, "function*")
 	assertEquals(exportAst.isDefault, true)
 	assertEquals(exportAst.declarations,
@@ -473,7 +479,8 @@ Deno.test('Export class declaration as default', async () =>
 	const result = await parseImportExportStatementsFromString(sourceCode, 'whatever')
 	const exportAst = result.exports[0]
 
-	assertEquals(exportAst.type, "ExportDeclarationAst")
+	assert(exportAst.type == "ExportDeclarationAst")
+	
 	assertEquals(exportAst.kind, "class")
 	assertEquals(exportAst.isDefault, true)
 	assertEquals(exportAst.declarations,
