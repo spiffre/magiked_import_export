@@ -13,6 +13,21 @@ const DATA_BASE_PATH = 'tests/'
 
 // IMPORT STATEMENTS
 
+// import defaultExport from "module-name";
+// import * as name from "module-name";
+// import { export1 } from "module-name";
+// import { export1 as alias1 } from "module-name";
+// import { default as alias } from "module-name";
+// import { export1, export2 } from "module-name";
+// import { export1, export2 as alias2, /* … */ } from "module-name";
+// import defaultExport, { export1, /* … */ } from "module-name";
+// import defaultExport, * as name from "module-name";
+// import "module-name";
+//
+// Unsupported:
+//   import { "string name" as alias } from "module-name";
+// TypeScript's parsing of this is insane ()
+
 Deno.test('Import default export', async () =>
 {
 	const sourceCode = 'import defaultExport from "module"'
@@ -210,28 +225,234 @@ Deno.test('Import for side-effect', async () =>
 	})
 })
 
-// The way TypeScript parses this example is insane and it doesn't matter because no-one uses it
-//Deno.tes'import { "string name" as alias } from "module"'ample 8', { only : true }, async () =>
-//{
-//	const sourceCode = 'import { "string name" as alias } from "module"'
-//	const result = await parseImportExportStatementsFromString(sourceCode, 'whatever')
+
+// EXPORTING DECLARATION
 //
-//	const importAst = result.imports[0]
+// export let name1, name2 /* and */ export const name1 = 1, name2 = 2/*, … */;
+// export function functionName() { /* … */ }
+// export function* generatorFunctionName() { /* … */ }
+// export class ClassName { /* … */ }
 //
-//	assert(importAst)
-//	assertEquals(importAst.default, undefined)
-//	assertEquals(importAst.namespace, undefined)
-//	assertEquals(importAst.named, [{ name : 'string name', alias : 'alias' }])
-//	assertEquals(importAst.moduleSpecifier,
-//	{
-//		specifier: 'module',
-//		prefix: undefined,
-//		isPackageId: true,
-//	})
-//})
+// Unsupported:
+//   export const { name1, name2: bar } = o;
+//   export const [ name1, name2 ] = array;
+// Doable but is it worth the effort ?
+
+Deno.test('Export multiple variable declaration with assignment', async () =>  // fixme: Handle object and array patterns ?
+{
+	const sourceCode = 'export const name1 = 1, name2 = 2'
+	const result = await parseImportExportStatementsFromString(sourceCode, 'whatever')
+	const exportAst = result.exports[0]
+
+	assert(exportAst.type == "ExportDeclarationAst")
+	
+	assertEquals(exportAst.kind, "variable")
+	assertEquals(exportAst.isDefault, false)
+	assertEquals(exportAst.declarations,
+	[
+		{ name: "name1", alias: undefined, kind : 'const' },
+		{ name: "name2", alias: undefined, kind : 'const' },
+	])
+})
+
+Deno.test('Export function declaration', async () =>
+{
+	const sourceCode = 'export function functionName() { /* … */ }'
+	const result = await parseImportExportStatementsFromString(sourceCode, 'whatever')
+	const exportAst = result.exports[0]
+
+	assert(exportAst.type == "ExportDeclarationAst")
+	
+	assertEquals(exportAst.kind, "function")
+	assertEquals(exportAst.isDefault, false)
+	assertEquals(exportAst.declarations,
+	[
+		{
+			name: "functionName",
+			alias: undefined,
+			kind : undefined
+		}
+	])
+})
+
+Deno.test('Export generator function declaration', async () =>
+{
+	const sourceCode = 'export function* generatorFunctionName() { /* … */ }'
+	const result = await parseImportExportStatementsFromString(sourceCode, 'whatever')
+	const exportAst = result.exports[0]
+
+	assert(exportAst.type == "ExportDeclarationAst")
+	
+	assertEquals(exportAst.kind, "function*")
+	assertEquals(exportAst.isDefault, false)
+	assertEquals(exportAst.declarations,
+	[
+		{
+			name: "generatorFunctionName",
+			alias: undefined,
+			kind : undefined
+		}
+	])
+})
+
+Deno.test('Export class declaration', async () =>
+{
+	const sourceCode = 'export class ClassName { /* … */ }'
+	const result = await parseImportExportStatementsFromString(sourceCode, 'whatever')
+	const exportAst = result.exports[0]
+
+	assert(exportAst.type == "ExportDeclarationAst")
+	
+	assertEquals(exportAst.kind, "class")
+	assertEquals(exportAst.isDefault, false)
+	assertEquals(exportAst.declarations,
+	[
+		{
+			name: "ClassName",
+			alias: undefined,
+			kind: undefined
+		}
+	])
+})
+
+
+// EXPORTING DECLARATION (DEFAULT)
+//
+// export default function functionName() { /* … */ }
+// export default function* generatorFunctionName() { /* … */ }
+// export default class ClassName { /* … */ }
+//
+// Unsupported:
+//   export default expression;
+//   export default function () { /* … */ }
+//   export default class { /* … */ }
+//   export default function* () { /* … */ }
+// These could be done but it would essentially be 'Anonymous' and then the loc's start/end for further analysis...
+
+Deno.test('Export function declaration as default', async () =>
+{
+	const sourceCode = 'export default function functionName() { /* … */ }'
+	const result = await parseImportExportStatementsFromString(sourceCode, 'whatever')
+	const exportAst = result.exports[0]
+
+	assert(exportAst.type == "ExportDeclarationAst")
+	
+	assertEquals(exportAst.kind, "function")
+	assertEquals(exportAst.isDefault, true)
+	assertEquals(exportAst.declarations,
+	[
+		{
+			name: "functionName",
+			alias: undefined,
+			kind : undefined
+		}
+	])
+})
+
+Deno.test('Export generator function declaration as default', async () =>
+{
+	const sourceCode = 'export default function* generatorFunctionName() { /* … */ }'
+	const result = await parseImportExportStatementsFromString(sourceCode, 'whatever')
+	const exportAst = result.exports[0]
+
+	assert(exportAst.type == "ExportDeclarationAst")
+	
+	assertEquals(exportAst.kind, "function*")
+	assertEquals(exportAst.isDefault, true)
+	assertEquals(exportAst.declarations,
+	[
+		{
+			name: "generatorFunctionName",
+			alias: undefined,
+			kind : undefined
+		}
+	])
+})
+
+Deno.test('Export class declaration as default', async () =>
+{
+	const sourceCode = 'export default class ClassName { /* … */ }'
+	const result = await parseImportExportStatementsFromString(sourceCode, 'whatever')
+	const exportAst = result.exports[0]
+	
+	assert(exportAst.type == "ExportDeclarationAst")
+	
+	assertEquals(exportAst.kind, "class")
+	assertEquals(exportAst.isDefault, true)
+	assertEquals(exportAst.declarations,
+	[
+		{
+			name: "ClassName",
+			alias: undefined,
+			kind: undefined
+		}
+	])
+})
+
+
+// EXPORT LISTS
+//
+// export { name1, /* …, */ nameN };
+// export { variable1 as name1, variable2 as name2, /* …, */ nameN };
+// export { name1 as default /*, … */ };
+//
+// Unsupported:
+//   export { variable1 as "string name" };
+// Again, the parsing of this by TS is insane
+
+Deno.test('Export locally-defined symbols', async () =>
+{
+	const sourceCode = 'export { name1, name2 }'
+	const result = await parseImportExportStatementsFromString(sourceCode, 'whatever')
+	const exportAst = result.exports[0]
+
+	assert(exportAst.type == 'ExportListAst')
+	
+	assertEquals(exportAst.named,
+	[
+		{ name: 'name1', alias : undefined },
+		{ name: 'name2', alias : undefined },
+	])
+})
+
+Deno.test('Export locally-defined symbols with alias', async () =>
+{
+	const sourceCode = 'export { variable1 as name1, variable2 as name2 }'
+	const result = await parseImportExportStatementsFromString(sourceCode, 'whatever')
+	const exportAst = result.exports[0] as ExportListAst
+
+	assert(exportAst.type == 'ExportListAst')
+	
+	assertEquals(exportAst.named,
+	[
+		{ name: 'variable1', alias: 'name1' },
+		{ name: 'variable2', alias: 'name2' },
+	])
+})
+
+Deno.test('Export locally-defined symbol as default', async () =>
+{
+	const sourceCode = 'export { name1 as default }'
+	const result = await parseImportExportStatementsFromString(sourceCode, 'whatever')
+	const exportAst = result.exports[0] as ExportListAst
+
+	assert(exportAst.type == 'ExportListAst')
+	
+	assertEquals(exportAst.named,
+	[
+		{ name: 'name1', alias: 'default' },
+	])
+})
 
 
 // REEXPORT / AGGREGATION EXPORT STATEMENTS
+//
+// export * from "module-name";
+// export * as name1 from "module-name";
+// export { name1, /* …, */ nameN } from "module-name";
+// export { import1 as name1, import2 as name2, /* …, */ nameN } from "module-name";
+// export { default, /* …, */ } from "module-name";
+// export { default as name1 } from "module-name";
 
 Deno.test('Re-export all exports', async () =>
 {
@@ -350,197 +571,7 @@ Deno.test('Re-export default export as named export with alias', async () =>
 })
 
 
-// EXPORTING DECLARATION
-
-Deno.test('Export multiple variable declaration with assignment', async () =>  // fixme: Handle object and array patterns ?
-{
-	const sourceCode = 'export const name1 = 1, name2 = 2'
-	const result = await parseImportExportStatementsFromString(sourceCode, 'whatever')
-	const exportAst = result.exports[0]
-
-	assert(exportAst.type == "ExportDeclarationAst")
-	
-	assertEquals(exportAst.kind, "variable")
-	assertEquals(exportAst.isDefault, false)
-	assertEquals(exportAst.declarations,
-	[
-		{ name: "name1", alias: undefined, kind : 'const' },
-		{ name: "name2", alias: undefined, kind : 'const' },
-	])
-})
-
-Deno.test('Export function declaration', async () =>
-{
-	const sourceCode = 'export function functionName() { /* … */ }'
-	const result = await parseImportExportStatementsFromString(sourceCode, 'whatever')
-	const exportAst = result.exports[0]
-
-	assert(exportAst.type == "ExportDeclarationAst")
-	
-	assertEquals(exportAst.kind, "function")
-	assertEquals(exportAst.isDefault, false)
-	assertEquals(exportAst.declarations,
-	[
-		{
-			name: "functionName",
-			alias: undefined,
-			kind : undefined
-		}
-	])
-})
-
-Deno.test('Export generator function declaration', async () =>
-{
-	const sourceCode = 'export function* generatorFunctionName() { /* … */ }'
-	const result = await parseImportExportStatementsFromString(sourceCode, 'whatever')
-	const exportAst = result.exports[0]
-
-	assert(exportAst.type == "ExportDeclarationAst")
-	
-	assertEquals(exportAst.kind, "function*")
-	assertEquals(exportAst.isDefault, false)
-	assertEquals(exportAst.declarations,
-	[
-		{
-			name: "generatorFunctionName",
-			alias: undefined,
-			kind : undefined
-		}
-	])
-})
-
-Deno.test('Export class declaration', async () =>
-{
-	const sourceCode = 'export class ClassName { /* … */ }'
-	const result = await parseImportExportStatementsFromString(sourceCode, 'whatever')
-	const exportAst = result.exports[0]
-
-	assert(exportAst.type == "ExportDeclarationAst")
-	
-	assertEquals(exportAst.kind, "class")
-	assertEquals(exportAst.isDefault, false)
-	assertEquals(exportAst.declarations,
-	[
-		{
-			name: "ClassName",
-			alias: undefined,
-			kind: undefined
-		}
-	])
-})
-
-
-// EXPORTING DECLARATION (DEFAULT)
-
-Deno.test('Export function declaration as default', async () =>
-{
-	const sourceCode = 'export default function functionName() { /* … */ }'
-	const result = await parseImportExportStatementsFromString(sourceCode, 'whatever')
-	const exportAst = result.exports[0]
-
-	assert(exportAst.type == "ExportDeclarationAst")
-	
-	assertEquals(exportAst.kind, "function")
-	assertEquals(exportAst.isDefault, true)
-	assertEquals(exportAst.declarations,
-	[
-		{
-			name: "functionName",
-			alias: undefined,
-			kind : undefined
-		}
-	])
-})
-
-Deno.test('Export generator function declaration as default', async () =>
-{
-	const sourceCode = 'export default function* generatorFunctionName() { /* … */ }'
-	const result = await parseImportExportStatementsFromString(sourceCode, 'whatever')
-	const exportAst = result.exports[0]
-
-	assert(exportAst.type == "ExportDeclarationAst")
-	
-	assertEquals(exportAst.kind, "function*")
-	assertEquals(exportAst.isDefault, true)
-	assertEquals(exportAst.declarations,
-	[
-		{
-			name: "generatorFunctionName",
-			alias: undefined,
-			kind : undefined
-		}
-	])
-})
-
-Deno.test('Export class declaration as default', async () =>
-{
-	const sourceCode = 'export default class ClassName { /* … */ }'
-	const result = await parseImportExportStatementsFromString(sourceCode, 'whatever')
-	const exportAst = result.exports[0]
-	
-	assert(exportAst.type == "ExportDeclarationAst")
-	
-	assertEquals(exportAst.kind, "class")
-	assertEquals(exportAst.isDefault, true)
-	assertEquals(exportAst.declarations,
-	[
-		{
-			name: "ClassName",
-			alias: undefined,
-			kind: undefined
-		}
-	])
-})
-
-
-// EXPORT LISTS
-
-Deno.test("Export locally-defined symbols", async () =>
-{
-	const sourceCode = 'export { name1, name2 }'
-	const result = await parseImportExportStatementsFromString(sourceCode, 'whatever')
-	const exportAst = result.exports[0]
-
-	assert(exportAst.type == 'ExportListAst')
-	
-	assertEquals(exportAst.named,
-	[
-		{ name: 'name1', alias : undefined },
-		{ name: 'name2', alias : undefined },
-	])
-})
-
-Deno.test("Export locally-defined symbols with alias", async () =>
-{
-	const sourceCode = 'export { variable1 as name1, variable2 as name2 }'
-	const result = await parseImportExportStatementsFromString(sourceCode, 'whatever')
-	const exportAst = result.exports[0] as ExportListAst
-
-	assert(exportAst.type == 'ExportListAst')
-	
-	assertEquals(exportAst.named,
-	[
-		{ name: 'variable1', alias: 'name1' },
-		{ name: 'variable2', alias: 'name2' },
-	])
-})
-
-Deno.test("Export locally-defined symbol as default", async () =>
-{
-	const sourceCode = 'export { name1 as default }'
-	const result = await parseImportExportStatementsFromString(sourceCode, 'whatever')
-	const exportAst = result.exports[0] as ExportListAst
-
-	assert(exportAst.type == 'ExportListAst')
-	
-	assertEquals(exportAst.named,
-	[
-		{ name: 'name1', alias: 'default' },
-	])
-})
-
-
-
+// USE OF THE PROCESSOR ITSELF
 
 Deno.test('import/export loader', async () =>
 {
