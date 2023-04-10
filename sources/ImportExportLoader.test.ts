@@ -11,6 +11,8 @@ import type { ImportExportPayload } from './ImportExportLoader.ts'
 const DATA_BASE_PATH = 'tests/'
 
 
+// IMPORT STATEMENTS
+
 Deno.test("parseImportStatements - example 1", async () =>
 {
 	const sourceCode = 'import defaultExport from "module"'
@@ -194,7 +196,6 @@ Deno.test('parseImportStatements - example 11', async () =>
 {
 	const sourceCode = 'import "module"'
 	const result = await parseImportExportStatementsFromString(sourceCode, 'whatever')
-
 	const importAst = result.imports[0]
 
 	assert(importAst)
@@ -228,6 +229,132 @@ Deno.test('parseImportStatements - example 11', async () =>
 //		isPackageId: true,
 //	})
 //})
+
+
+// REEXPORT / AGGREGATION EXPORT STATEMENTS
+
+
+Deno.test("parseReexportStatements - example 1", async () =>
+{
+	const sourceCode = 'export * from "package-id"'
+	const result = await parseImportExportStatementsFromString(sourceCode, 'whatever')
+	const reexportAst = result.reexports[0]
+  
+	assertEquals(reexportAst.type, "ReexportMetaAst")
+	assertEquals(reexportAst.moduleSpecifier,
+	{
+		specifier : "package-id",
+		prefix : undefined,
+		isPackageId : true
+	})
+	assertEquals(reexportAst.named, undefined)
+	assertEquals(reexportAst.namespace, true)
+	assertEquals(reexportAst.namespaceAlias, undefined)
+})
+
+Deno.test("parseReexportStatements - example 2", async () =>
+{
+	const sourceCode = 'export * as name1 from "package-id"'
+	const result = await parseImportExportStatementsFromString(sourceCode, 'whatever')
+	const reexportAst = result.reexports[0]
+
+	assertEquals(reexportAst.type, "ReexportMetaAst")
+	assertEquals(reexportAst.moduleSpecifier,
+	{
+		specifier : "package-id",
+		prefix : undefined,
+		isPackageId : true
+	})
+	assertEquals(reexportAst.named, undefined)
+	assertEquals(reexportAst.namespace, true)
+	assertEquals(reexportAst.namespaceAlias, "name1")
+})
+
+Deno.test("parseReexportStatements - example 3", async () =>
+{
+	const sourceCode = 'export { name1 } from "package-id"'
+	const result = await parseImportExportStatementsFromString(sourceCode, 'whatever')
+	const reexportAst = result.reexports[0]
+
+	assertEquals(reexportAst.type, "ReexportMetaAst")
+	assertEquals(reexportAst.moduleSpecifier,
+	{
+		specifier : "package-id",
+		prefix : undefined,
+		isPackageId : true
+	})
+	assertEquals(reexportAst.named,
+	[
+		{ name: "name1", alias: undefined }
+	])
+	assertEquals(reexportAst.namespace, undefined)
+	assertEquals(reexportAst.namespaceAlias, undefined)
+})
+
+Deno.test("parseReexportStatements - example 4", async () =>
+{
+	const sourceCode = 'export { import1 as name1, import2 as name2 } from "package-id"'
+	const result = await parseImportExportStatementsFromString(sourceCode, 'whatever')
+	const reexportAst = result.reexports[0]
+
+	assertEquals(reexportAst.type, "ReexportMetaAst")
+	assertEquals(reexportAst.moduleSpecifier,
+	{
+		specifier : "package-id",
+		prefix : undefined,
+		isPackageId : true
+	})
+	assertEquals(reexportAst.named,
+	[
+		{ name: "import1", alias: "name1" },
+		{ name: "import2", alias: "name2" },
+	])
+	assertEquals(reexportAst.namespace, undefined)
+	assertEquals(reexportAst.namespaceAlias, undefined)
+})
+
+Deno.test("parseReexportStatements - example 5", async () =>
+{
+	const sourceCode = 'export { default } from "module-name"'
+	const result = await parseImportExportStatementsFromString(sourceCode, 'whatever')
+	const reexportAst = result.reexports[0]
+
+	assertEquals(reexportAst.type, "ReexportMetaAst")
+	assertEquals(reexportAst.moduleSpecifier,
+	{
+		specifier : "module-name",
+		prefix : undefined,
+		isPackageId : true 
+	})
+	assertEquals(reexportAst.named,
+	[
+		{ name: "default", alias: undefined }
+	])
+	assertEquals(reexportAst.namespace, undefined)
+	assertEquals(reexportAst.namespaceAlias, undefined)
+})
+
+Deno.test("parseReexportStatements - example 6", async () =>
+{
+	const sourceCode = 'export { default as name1 } from "module-name"'
+	const result = await parseImportExportStatementsFromString(sourceCode, 'whatever')
+	const reexportAst = result.reexports[0]
+
+	assertEquals(reexportAst.type, "ReexportMetaAst")
+	assertEquals(reexportAst.moduleSpecifier, { specifier: "module-name", prefix: undefined, isPackageId: true })
+	assertEquals(reexportAst.named,
+	[
+		{ name: "default", alias: "name1" }
+	])
+	assertEquals(reexportAst.namespace, undefined)
+	assertEquals(reexportAst.namespaceAlias, undefined)
+})
+
+
+
+
+
+
 
 
 

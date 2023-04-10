@@ -79,8 +79,15 @@ export interface ReexportMetaAst extends MetaAst
 {
 	type: 'ReexportMetaAst'
 	
-	path: string
-	symbolId: string
+	named?:
+	{
+		name: string;
+		alias?: string;
+	}[];
+	
+	namespace?: boolean;
+	namespaceAlias?: string;
+	moduleSpecifier: ModuleSpecifier
 }
 
 export interface ImportExportGraphNode
@@ -168,6 +175,96 @@ export async function parseImportExportStatements (source: TS.SourceFile, filepa
 			
 				iegn.imports.push(importAstNode)
 			
+		}
+		// For re-exports aka Aggregation exports
+		else if (ts.isExportDeclaration(statement) && statement.moduleSpecifier)
+		{
+			const moduleSpecifierText = (statement.moduleSpecifier as ts.StringLiteral).text
+
+			const prefixRegex = /^(copy:|webworker:)/
+			const prefixMatch = moduleSpecifierText.match(prefixRegex)
+			const prefix = prefixMatch ? prefixMatch[0] : undefined
+			const specifier = moduleSpecifierText.replace(prefixRegex, '')
+			const isPackageId = !specifier.startsWith('./') && !specifier.startsWith('../')
+			const resolvedSpecifier = isPackageId ? specifier : await resolveModuleSpecifier( dirname, specifier )
+
+			const moduleSpecifier: ModuleSpecifier =
+			{
+				specifier : resolvedSpecifier,
+				isPackageId,
+				prefix,
+			}
+			
+			const loc =
+			{
+				start: statement.pos,
+				end: statement.end,
+			}
+
+			if (statement.exportClause)
+			{
+				// We're considering that the export either has named exports 
+				// or is a namespace export. It can be both actually:
+				//   export * as ns, { name1 as alias1 } from "module-name";
+				// but the way TS parses it is insane:
+				// It says:
+				//   { name1 as alias1 }
+				// Is the moduleSpecifier of the ExportDeclaration
+				
+				if (ts.isNamedExports(statement.exportClause))
+				{
+					iegn.reexports.push(
+					{
+						type: 'ReexportMetaAst',
+						named: statement.exportClause.elements.map( (element) =>
+						{
+							// If propertyName is defined, it is the initial name of the import
+							// and name is the local alias
+							if (element.propertyName)
+							{
+								return {
+									name : element.propertyName.text,
+									alias : element.name.text,
+								}
+							}
+							// If not, then *name* is the initial name of the import
+							// (and there's no alias)
+							else
+							{
+								return {
+									name : element.name.text,
+									alias : undefined,
+								}
+							}
+							
+						}),
+						
+						moduleSpecifier,
+						loc
+					});
+				}
+				else
+				{
+					iegn.reexports.push(
+					{
+						type: 'ReexportMetaAst',
+						namespace : ts.isNamespaceExport(statement.exportClause),
+						namespaceAlias: statement.exportClause.name?.text,
+						moduleSpecifier,
+						loc
+					});
+				}
+			}
+			else
+			{
+				iegn.reexports.push(
+				{
+					type: 'ReexportMetaAst',
+					namespace: true,
+					moduleSpecifier,
+					loc
+				});
+			}
 		}
 	}
 	
