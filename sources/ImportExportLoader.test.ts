@@ -13,7 +13,7 @@ const DATA_BASE_PATH = 'tests/'
 
 // IMPORT STATEMENTS
 
-Deno.test("parseImportStatements - example 1", async () =>
+Deno.test('Import default export', async () =>
 {
 	const sourceCode = 'import defaultExport from "module"'
 	const result = await parseImportExportStatementsFromString(sourceCode, "whatever")
@@ -30,7 +30,7 @@ Deno.test("parseImportStatements - example 1", async () =>
 	})
 })
 
-Deno.test('parseImportStatements - example 2', async () =>
+Deno.test('Import all exports as namespace', async () =>
 {
 	const sourceCode = 'import * as name from "module"'
 	const result = await parseImportExportStatementsFromString(sourceCode, 'whatever')
@@ -48,7 +48,7 @@ Deno.test('parseImportStatements - example 2', async () =>
 	})
 })
 
-Deno.test('parseImportStatements - example 3', async () =>
+Deno.test('Import named export', async () =>
 {
 	const sourceCode = 'import { export1 } from "module"'
 	const result = await parseImportExportStatementsFromString(sourceCode, 'whatever')
@@ -67,7 +67,7 @@ Deno.test('parseImportStatements - example 3', async () =>
 	})
 })
 
-Deno.test('parseImportStatements - example 4', async () =>
+Deno.test('Import named export with alias', async () =>
 {
 	const sourceCode = 'import { export1 as alias1 } from "module"'
 	const result = await parseImportExportStatementsFromString(sourceCode, 'whatever')
@@ -86,7 +86,7 @@ Deno.test('parseImportStatements - example 4', async () =>
 	})
 })
 
-Deno.test('parseImportStatements - example 5', async () =>
+Deno.test('import default as named export', async () =>
 {
 	const sourceCode = 'import { default as alias } from "module"'
 	const result = await parseImportExportStatementsFromString(sourceCode, 'whatever')
@@ -108,7 +108,7 @@ Deno.test('parseImportStatements - example 5', async () =>
 	})
 })
 
-Deno.test('parseImportStatements - example 6', async () =>
+Deno.test('import multiple named exports', async () =>
 {
 	const sourceCode = 'import { export1, export2 } from "module"'
 	const result = await parseImportExportStatementsFromString(sourceCode, 'whatever')
@@ -131,7 +131,7 @@ Deno.test('parseImportStatements - example 6', async () =>
 	})
 })
 
-Deno.test('parseImportStatements - example 7', async () =>
+Deno.test('import multiple named exports with alias', async () =>
 {
 	const sourceCode = 'import { export1, export2 as alias2 } from "module"'
 	const result = await parseImportExportStatementsFromString(sourceCode, 'whatever')
@@ -154,7 +154,7 @@ Deno.test('parseImportStatements - example 7', async () =>
 	})
 })
 
-Deno.test('parseImportStatements - example 9', async () =>
+Deno.test('Import default export and named export', async () =>
 {
 	const sourceCode = 'import defaultExport, { export1 } from "module"'
 	const result = await parseImportExportStatementsFromString(sourceCode, 'whatever')
@@ -173,7 +173,7 @@ Deno.test('parseImportStatements - example 9', async () =>
 	})
 })
 
-Deno.test('parseImportStatements - example 10', async () =>
+Deno.test('Import default export and all exports as namespace', async () =>
 {
 	const sourceCode = 'import defaultExport, * as name from "module"'
 	const result = await parseImportExportStatementsFromString(sourceCode, 'whatever')
@@ -192,7 +192,7 @@ Deno.test('parseImportStatements - example 10', async () =>
 	})
 })
 
-Deno.test('parseImportStatements - example 11', async () =>
+Deno.test('Import for side-effect', async () =>
 {
 	const sourceCode = 'import "module"'
 	const result = await parseImportExportStatementsFromString(sourceCode, 'whatever')
@@ -211,7 +211,7 @@ Deno.test('parseImportStatements - example 11', async () =>
 })
 
 // The way TypeScript parses this example is insane amnd it doesn't matter because no-one uses it
-//Deno.test('parseImportStatements - example 8', { only : true }, async () =>
+//Deno.tes'import { "string name" as alias } from "module"'ample 8', { only : true }, async () =>
 //{
 //	const sourceCode = 'import { "string name" as alias } from "module"'
 //	const result = await parseImportExportStatementsFromString(sourceCode, 'whatever')
@@ -234,7 +234,7 @@ Deno.test('parseImportStatements - example 11', async () =>
 // REEXPORT / AGGREGATION EXPORT STATEMENTS
 
 
-Deno.test("parseReexportStatements - example 1", async () =>
+Deno.test('Re-export all exports', async () =>
 {
 	const sourceCode = 'export * from "package-id"'
 	const result = await parseImportExportStatementsFromString(sourceCode, 'whatever')
@@ -252,7 +252,7 @@ Deno.test("parseReexportStatements - example 1", async () =>
 	assertEquals(reexportAst.namespaceAlias, undefined)
 })
 
-Deno.test("parseReexportStatements - example 2", async () =>
+Deno.test('Re-export all exports as namespace', async () =>
 {
 	const sourceCode = 'export * as name1 from "package-id"'
 	const result = await parseImportExportStatementsFromString(sourceCode, 'whatever')
@@ -270,7 +270,7 @@ Deno.test("parseReexportStatements - example 2", async () =>
 	assertEquals(reexportAst.namespaceAlias, "name1")
 })
 
-Deno.test("parseReexportStatements - example 3", async () =>
+Deno.test('Re-export named export', async () =>
 {
 	const sourceCode = 'export { name1 } from "package-id"'
 	const result = await parseImportExportStatementsFromString(sourceCode, 'whatever')
@@ -291,7 +291,7 @@ Deno.test("parseReexportStatements - example 3", async () =>
 	assertEquals(reexportAst.namespaceAlias, undefined)
 })
 
-Deno.test("parseReexportStatements - example 4", async () =>
+Deno.test('Re-export multiple named exports with alias', async () =>
 {
 	const sourceCode = 'export { import1 as name1, import2 as name2 } from "package-id"'
 	const result = await parseImportExportStatementsFromString(sourceCode, 'whatever')
@@ -313,7 +313,7 @@ Deno.test("parseReexportStatements - example 4", async () =>
 	assertEquals(reexportAst.namespaceAlias, undefined)
 })
 
-Deno.test("parseReexportStatements - example 5", async () =>
+Deno.test('Re-export default export as named export', async () =>
 {
 	const sourceCode = 'export { default } from "module-name"'
 	const result = await parseImportExportStatementsFromString(sourceCode, 'whatever')
@@ -334,7 +334,7 @@ Deno.test("parseReexportStatements - example 5", async () =>
 	assertEquals(reexportAst.namespaceAlias, undefined)
 })
 
-Deno.test("parseReexportStatements - example 6", async () =>
+Deno.test('Re-export default export as named export with alias', async () =>
 {
 	const sourceCode = 'export { default as name1 } from "module-name"'
 	const result = await parseImportExportStatementsFromString(sourceCode, 'whatever')
@@ -353,7 +353,7 @@ Deno.test("parseReexportStatements - example 6", async () =>
 
 // EXPORTING DECLARATION
 
-Deno.test("parseExportDeclarationStatements - example 1", async () =>  // fixme: Handle object and array patterns ?
+Deno.test('Export multiple variable declaration with assignment', async () =>  // fixme: Handle object and array patterns ?
 {
 	const sourceCode = 'export const name1 = 1, name2 = 2'
 	const result = await parseImportExportStatementsFromString(sourceCode, 'whatever')
@@ -369,7 +369,7 @@ Deno.test("parseExportDeclarationStatements - example 1", async () =>  // fixme:
 	])
 })
 
-Deno.test("parseExportDeclarationStatements - example 2", async () =>
+Deno.test('Export function declaration', async () =>
 {
 	const sourceCode = 'export function functionName() { /* … */ }'
 	const result = await parseImportExportStatementsFromString(sourceCode, 'whatever')
@@ -388,7 +388,7 @@ Deno.test("parseExportDeclarationStatements - example 2", async () =>
 	])
 })
 
-Deno.test("parseExportDeclarationStatements - example 3", async () =>
+Deno.test('Export generator function declaration', async () =>
 {
 	const sourceCode = 'export function* generatorFunctionName() { /* … */ }'
 	const result = await parseImportExportStatementsFromString(sourceCode, 'whatever')
@@ -407,7 +407,7 @@ Deno.test("parseExportDeclarationStatements - example 3", async () =>
 	])
 })
 
-Deno.test("parseExportDeclarationStatements - example 4", async () =>
+Deno.test('Export class declaration', async () =>
 {
 	const sourceCode = 'export class ClassName { /* … */ }'
 	const result = await parseImportExportStatementsFromString(sourceCode, 'whatever')
@@ -429,7 +429,7 @@ Deno.test("parseExportDeclarationStatements - example 4", async () =>
 
 // EXPORTING DECLARATION (DEFAULT)
 
-Deno.test("parseExportDeclarationStatements - example 2", async () =>
+Deno.test('Export function declaration as default', async () =>
 {
 	const sourceCode = 'export default function functionName() { /* … */ }'
 	const result = await parseImportExportStatementsFromString(sourceCode, 'whatever')
@@ -448,7 +448,7 @@ Deno.test("parseExportDeclarationStatements - example 2", async () =>
 	])
 })
 
-Deno.test("parseExportDeclarationStatements - example 3", async () =>
+Deno.test('Export generator function declaration as default', async () =>
 {
 	const sourceCode = 'export default function* generatorFunctionName() { /* … */ }'
 	const result = await parseImportExportStatementsFromString(sourceCode, 'whatever')
@@ -467,7 +467,7 @@ Deno.test("parseExportDeclarationStatements - example 3", async () =>
 	])
 })
 
-Deno.test("parseExportDeclarationStatements - example 4", async () =>
+Deno.test('Export class declaration as default', async () =>
 {
 	const sourceCode = 'export default class ClassName { /* … */ }'
 	const result = await parseImportExportStatementsFromString(sourceCode, 'whatever')
