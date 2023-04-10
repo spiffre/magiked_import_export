@@ -6,7 +6,7 @@ import { processorForTypescript } from '../deps/magiked/magiked-typescript-loade
 import type { TsPayload } from '../deps/magiked/magiked-typescript-loader.ts'
 
 import { processorForImportExport, parseImportExportStatementsFromString } from './ImportExportLoader.ts'
-import type { ImportExportPayload } from './ImportExportLoader.ts'
+import type { ImportExportPayload, ExportListAst } from './ImportExportLoader.ts'
 
 const DATA_BASE_PATH = 'tests/'
 
@@ -232,7 +232,6 @@ Deno.test('Import for side-effect', async () =>
 
 
 // REEXPORT / AGGREGATION EXPORT STATEMENTS
-
 
 Deno.test('Re-export all exports', async () =>
 {
@@ -478,7 +477,7 @@ Deno.test('Export class declaration as default', async () =>
 	const sourceCode = 'export default class ClassName { /* … */ }'
 	const result = await parseImportExportStatementsFromString(sourceCode, 'whatever')
 	const exportAst = result.exports[0]
-
+	
 	assert(exportAst.type == "ExportDeclarationAst")
 	
 	assertEquals(exportAst.kind, "class")
@@ -494,7 +493,51 @@ Deno.test('Export class declaration as default', async () =>
 })
 
 
+// EXPORT LISTS
 
+Deno.test("Export locally-defined symbols", async () =>
+{
+	const sourceCode = 'export { name1, name2 }'
+	const result = await parseImportExportStatementsFromString(sourceCode, 'whatever')
+	const exportAst = result.exports[0]
+
+	assert(exportAst.type == 'ExportListAst')
+	
+	assertEquals(exportAst.named,
+	[
+		{ name: 'name1', alias : undefined },
+		{ name: 'name2', alias : undefined },
+	])
+})
+
+Deno.test("Export locally-defined symbols with alias", async () =>
+{
+	const sourceCode = 'export { variable1 as name1, variable2 as name2 }'
+	const result = await parseImportExportStatementsFromString(sourceCode, 'whatever')
+	const exportAst = result.exports[0] as ExportListAst
+
+	assert(exportAst.type == 'ExportListAst')
+	
+	assertEquals(exportAst.named,
+	[
+		{ name: 'variable1', alias: 'name1' },
+		{ name: 'variable2', alias: 'name2' },
+	])
+})
+
+Deno.test("Export locally-defined symbol as default", async () =>
+{
+	const sourceCode = 'export { name1 as default }'
+	const result = await parseImportExportStatementsFromString(sourceCode, 'whatever')
+	const exportAst = result.exports[0] as ExportListAst
+
+	assert(exportAst.type == 'ExportListAst')
+	
+	assertEquals(exportAst.named,
+	[
+		{ name: 'name1', alias: 'default' },
+	])
+})
 
 
 

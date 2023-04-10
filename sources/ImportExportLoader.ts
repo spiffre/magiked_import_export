@@ -69,42 +69,51 @@ export interface ImportMetaAst extends MetaAst
 	moduleSpecifier: ModuleSpecifier
 }
 
-interface ExportDeclarationAst extends MetaAst
+export interface ExportDeclarationAst extends MetaAst
 {
-	type: 'ExportDeclarationAst';
+	type: 'ExportDeclarationAst'
 	kind: 'variable' | 'function' | 'function*' | 'class',
-	isDefault: boolean;
+	isDefault: boolean
 	declarations:
 	{
-		name?: string;
-		alias?: string;
+		name?: string
+		alias?: string
 		kind?: 'const' | 'let' | 'var',
 		
-		//initializer?: any;
+		//initializer?: any
 		//isObjectPattern? boolean (in which case, there's no "name")
 		//isArrayPattern? boolean (in which case, there's no "name")
+	}[]
+}
+
+export interface ExportListAst extends MetaAst
+{
+	type: 'ExportListAst'
+	named:
+	{
+		name?: string
+		alias?: string
 	}[]
 }
 
 export interface ReexportMetaAst extends MetaAst
 {
 	type: 'ReexportMetaAst'
-	
 	named?:
 	{
-		name: string;
-		alias?: string;
-	}[];
+		name: string
+		alias?: string
+	}[]
 	
-	namespace?: boolean;
-	namespaceAlias?: string;
+	namespace?: boolean
+	namespaceAlias?: string
 	moduleSpecifier: ModuleSpecifier
 }
 
 export interface ImportExportGraphNode
 {
 	imports: ImportMetaAst[]
-	exports: ExportDeclarationAst[]
+	exports: (ExportDeclarationAst|ExportListAst)[]
 	reexports: ReexportMetaAst[]
 }
 
@@ -208,15 +217,15 @@ export async function parseImportExportStatements (source: TS.SourceFile, filepa
 			
 			const loc =
 			{
-				start: statement.pos,
-				end: statement.end,
+				start : statement.pos,
+				end : statement.end,
 			}
 
 			if (statement.exportClause)
 			{
 				// We're considering that the export either has named exports 
 				// or is a namespace export. It can be both actually:
-				//   export * as ns, { name1 as alias1 } from "module-name";
+				//   export * as ns, { name1 as alias1 } from "module-name"
 				// but the way TS parses it is insane:
 				// It says:
 				//   { name1 as alias1 }
@@ -226,8 +235,8 @@ export async function parseImportExportStatements (source: TS.SourceFile, filepa
 				{
 					iegn.reexports.push(
 					{
-						type: 'ReexportMetaAst',
-						named: statement.exportClause.elements.map( (element) =>
+						type : 'ReexportMetaAst',
+						named : statement.exportClause.elements.map( (element) =>
 						{
 							// If propertyName is defined, it is the initial name of the import
 							// and name is the local alias
@@ -252,30 +261,71 @@ export async function parseImportExportStatements (source: TS.SourceFile, filepa
 						
 						moduleSpecifier,
 						loc
-					});
+					})
 				}
 				else
 				{
 					iegn.reexports.push(
 					{
-						type: 'ReexportMetaAst',
-						namespace : ts.isNamespaceExport(statement.exportClause),
-						namespaceAlias: statement.exportClause.name?.text,
+						type : 'ReexportMetaAst',
+						namespace  : ts.isNamespaceExport(statement.exportClause),
+						namespaceAlias : statement.exportClause.name?.text,
 						moduleSpecifier,
 						loc
-					});
+					})
 				}
 			}
 			else
 			{
 				iegn.reexports.push(
 				{
-					type: 'ReexportMetaAst',
-					namespace: true,
+					type : 'ReexportMetaAst',
+					namespace : true,
 					moduleSpecifier,
 					loc
-				});
+				})
 			}
+		}
+		// For export lists
+		else if (ts.isExportDeclaration(statement) && statement.moduleSpecifier == undefined)
+		{
+			const loc =
+			{
+				start: statement.pos,
+				end: statement.end,
+			}
+			
+			assert(statement.exportClause)
+			assert(statement.exportClause.kind == ts.SyntaxKind.NamedExports)
+			
+			iegn.exports.push(
+			{
+				type : 'ExportListAst',
+				named : statement.exportClause.elements.map( (element) =>
+				{
+					// If propertyName is defined, it is the initial name of the import
+					// and name is the local alias
+					if (element.propertyName)
+					{
+						return {
+							name : element.propertyName.text,
+							alias : element.name.text,
+						}
+					}
+					// If not, then *name* is the initial name of the import
+					// (and there's no alias)
+					else
+					{
+						return {
+							name : element.name.text,
+							alias : undefined,
+						}
+					}
+					
+				}),
+				
+				loc
+			})
 		}
 		// For export declarations
 		else if ('modifiers' in statement && Array.isArray(statement.modifiers) && statement.modifiers.some( (modifier) => modifier.kind == ts.SyntaxKind.ExportKeyword))
