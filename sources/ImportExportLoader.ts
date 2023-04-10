@@ -321,47 +321,66 @@ export async function parseImportExportStatements (source: TS.SourceFile, filepa
 			// If it's a function
 			else if (statement.kind == ts.SyntaxKind.FunctionDeclaration && (statement as TS.FunctionDeclaration).asteriskToken == undefined)
 			{
+				const funcDecl = statement as ts.FunctionDeclaration
+
 				exportAst =
 				{
 					type : 'ExportDeclarationAst',
 					kind : 'function',
 					loc,
-					declarations : [],
-					isDefault : false
+					declarations :
+					[
+						{
+							name : funcDecl.name?.escapedText.toString(),
+							alias : undefined,
+							kind : undefined
+						}
+					],
+					isDefault : undefined
 				}
-				
-				// ...
-				
 			}
 			// If it's a function generator
 			else if (statement.kind == ts.SyntaxKind.FunctionDeclaration && (statement as TS.FunctionDeclaration).asteriskToken?.kind == ts.SyntaxKind.AsteriskToken)
 			{
+				const funcDecl = statement as ts.FunctionDeclaration
+
 				exportAst =
 				{
 					type : 'ExportDeclarationAst',
 					kind : 'function*',
 					loc,
-					declarations : [],
-					isDefault : false
+					declarations :
+					[
+						{
+							name : funcDecl.name?.escapedText.toString(),
+							alias : undefined,
+							kind : undefined
+						}
+					],
+					isDefault : undefined
 				}
-				
-				// ...
-				
 			}
 			// If it's a class
 			else if (statement.kind == ts.SyntaxKind.ClassDeclaration)
 			{
+				const classDecl = statement as ts.ClassDeclaration
+
 				exportAst =
 				{
 					type : 'ExportDeclarationAst',
 					kind : 'class',
 					loc,
-					declarations : [],
-					isDefault : false
+					declarations :
+					[
+						{
+							name : classDecl.name?.escapedText.toString(),
+							alias : undefined,
+							kind : undefined
+						}
+					],
+					isDefault : undefined
+					
 				}
-				
-				// ...
-
 			}
 			
 			assert(exportAst)
