@@ -351,7 +351,23 @@ Deno.test("parseReexportStatements - example 6", async () =>
 })
 
 
+// EXPORTING DECLARATION
 
+Deno.test("parseExportDeclarationStatements - example 2", { only : true }, async () =>
+{
+	const sourceCode = 'export const name1 = 1, name2 = 2;';
+	const result = await parseImportExportStatementsFromString(sourceCode, 'whatever')
+	const exportAst = result.exports[0]
+  
+	assertEquals(exportAst.type, "ExportDeclarationAst");
+	assertEquals(exportAst.kind, "variable");
+	assertEquals(exportAst.isDefault, undefined);
+	assertEquals(exportAst.declarations,
+	[
+		{ name: "name1", alias: undefined, kind : 'const' },
+		{ name: "name2", alias: undefined, kind : 'const' },
+	]);
+});
 
 
 

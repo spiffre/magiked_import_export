@@ -4,6 +4,7 @@ import type { Payload } from '../deps/magiked/magiked.ts'
 
 import { ts } from '../deps/magiked/magiked-typescript-loader.ts'
 import type { TS } from '../deps/magiked/magiked-typescript-loader.ts'
+import { assert } from '../deps/std/assert.ts'
 
 
 export interface ImportExportPayload extends Payload
@@ -68,11 +69,20 @@ export interface ImportMetaAst extends MetaAst
 	moduleSpecifier: ModuleSpecifier
 }
 
-export interface ExportMetaAst extends MetaAst
+interface ExportDeclarationAst extends MetaAst
 {
-	type: 'ExportMetaAst'
-	
-	symbolId: string
+	type: 'ExportDeclarationAst';
+	kind: 'variable' | 'function' | 'function*' | 'class',
+	isDefault?: boolean;
+	declarations:
+	{
+		name?: string;
+		alias?: string;
+		kind?: 'const' | 'let' | 'var',
+		//initializer?: any;
+		//isObjectPattern? boolean (in which case, there's no "name")
+		//isArrayPattern? boolean (in which case, there's no "name")
+	}[]
 }
 
 export interface ReexportMetaAst extends MetaAst
@@ -93,7 +103,7 @@ export interface ReexportMetaAst extends MetaAst
 export interface ImportExportGraphNode
 {
 	imports: ImportMetaAst[]
-	exports: ExportMetaAst[]
+	exports: ExportDeclarationAst[]
 	reexports: ReexportMetaAst[]
 }
 
@@ -115,65 +125,65 @@ export async function parseImportExportStatements (source: TS.SourceFile, filepa
 		if (statement.kind == ts.SyntaxKind.ImportDeclaration)
 		{
 			const importDeclaration = statement as TS.ImportDeclaration
-
-				const moduleSpecifierText = (importDeclaration.moduleSpecifier as ts.StringLiteral).text
-
-				const prefixRegex = /^(copy:|webworker:)/
-				const prefixMatch = moduleSpecifierText.match(prefixRegex)
-				const prefix = prefixMatch ? prefixMatch[0] : undefined
-				const specifier = moduleSpecifierText.replace(prefixRegex, '')
-				const isPackageId = !specifier.startsWith('./') && !specifier.startsWith('../')
-				const resolvedSpecifier = isPackageId ? specifier : await resolveModuleSpecifier( dirname, specifier )
-
-				const moduleSpecifier: ModuleSpecifier =
-				{
-					specifier : resolvedSpecifier,
-					isPackageId,
-					prefix,
-				}
-				
-				const loc =
-				{
-					start : importDeclaration.pos,
-					end : importDeclaration.end
-				}
-				
-				const importAstNode: ImportMetaAst =
-				{
-					type : 'ImportMetaAst',
-					moduleSpecifier,
-					loc
-				}
-				
-				if (importDeclaration.importClause)
-				{
-					const { name, namedBindings } = importDeclaration.importClause
 			
-					if (name)
+			const moduleSpecifierText = (importDeclaration.moduleSpecifier as ts.StringLiteral).text
+
+			const prefixRegex = /^(copy:|webworker:)/
+			const prefixMatch = moduleSpecifierText.match(prefixRegex)
+			const prefix = prefixMatch ? prefixMatch[0] : undefined
+			const specifier = moduleSpecifierText.replace(prefixRegex, '')
+			const isPackageId = !specifier.startsWith('./') && !specifier.startsWith('../')
+			const resolvedSpecifier = isPackageId ? specifier : await resolveModuleSpecifier( dirname, specifier )
+
+			const moduleSpecifier: ModuleSpecifier =
+			{
+				specifier : resolvedSpecifier,
+				isPackageId,
+				prefix,
+			}
+			
+			const loc =
+			{
+				start : importDeclaration.pos,
+				end : importDeclaration.end
+			}
+			
+			const importAstNode: ImportMetaAst =
+			{
+				type : 'ImportMetaAst',
+				moduleSpecifier,
+				loc
+			}
+			
+			if (importDeclaration.importClause)
+			{
+				const { name, namedBindings } = importDeclaration.importClause
+		
+				if (name)
+				{
+					importAstNode.default = name.text
+				}
+			
+				if (namedBindings)
+				{
+					if (ts.isNamespaceImport(namedBindings))
 					{
-						importAstNode.default = name.text
+						importAstNode.namespace = namedBindings.name.text
 					}
-			
-					if (namedBindings)
+					else if (ts.isNamedImports(namedBindings))
 					{
-						if (ts.isNamespaceImport(namedBindings))
+						importAstNode.named = namedBindings.elements.map( (element) =>
 						{
-							importAstNode.namespace = namedBindings.name.text
-						}
-						else if (ts.isNamedImports(namedBindings))
-						{
-							importAstNode.named = namedBindings.elements.map( (element) =>
-							{
-								return {
-									name : element.propertyName?.text || element.name.text,
-									alias : element.propertyName ? element.name.text : undefined,
-								}
-							})
-						}
+							return {
+								name : element.propertyName?.text || element.name.text,
+								alias : element.propertyName ? element.name.text : undefined,
+							}
+						})
 					}
 				}
-			
-				iegn.imports.push(importAstNode)
+			}
+		
+			iegn.imports.push(importAstNode)
 			
 		}
 		// For re-exports aka Aggregation exports
@@ -266,6 +276,129 @@ export async function parseImportExportStatements (source: TS.SourceFile, filepa
 				});
 			}
 		}
+		// For export declarations
+		else if ('modifiers' in statement && Array.isArray(statement.modifiers) && statement.modifiers.some( (modifier) => modifier.kind == ts.SyntaxKind.ExportKeyword))
+		{
+			let exportAst: ExportDeclarationAst | undefined = undefined
+			
+			const loc =
+			{
+				start: statement.pos,
+				end: statement.end,
+			}
+			
+			// If it's a variable
+			if (statement.kind == ts.SyntaxKind.VariableStatement)
+			{
+				const variableSt = statement as TS.VariableStatement
+				const variableDeclList = variableSt.declarationList
+				const kind = (variableDeclList.flags & ts.NodeFlags.Const)
+									? 'const' as const
+									: (variableDeclList.flags & ts.NodeFlags.Let)
+									? 'let' as const
+									: 'var' as const
+				
+				const declarations = variableDeclList.declarations.map( (decl) =>
+				{
+					assert(ts.isIdentifier(decl.name)) // fixme: if it's not, we have an object or array pattern
+					
+					return {
+						name : decl.name.escapedText.toString(),
+						alias : undefined,  // fixme: does it even exist in this context ?
+						kind
+					}
+				})
+				
+				exportAst =
+				{
+					type : 'ExportDeclarationAst',
+					kind : 'variable',
+					loc,
+					declarations,
+					isDefault : undefined
+				}
+			}
+			// If it's a function
+			else if (statement.kind == ts.SyntaxKind.FunctionDeclaration && (statement as TS.FunctionDeclaration).asteriskToken == undefined)
+			{
+				exportAst =
+				{
+					type : 'ExportDeclarationAst',
+					kind : 'function',
+					loc,
+					declarations : [],
+					isDefault : false
+				}
+				
+				// ...
+				
+			}
+			// If it's a function generator
+			else if (statement.kind == ts.SyntaxKind.FunctionDeclaration && (statement as TS.FunctionDeclaration).asteriskToken?.kind == ts.SyntaxKind.AsteriskToken)
+			{
+				exportAst =
+				{
+					type : 'ExportDeclarationAst',
+					kind : 'function*',
+					loc,
+					declarations : [],
+					isDefault : false
+				}
+				
+				// ...
+				
+			}
+			// If it's a class
+			else if (statement.kind == ts.SyntaxKind.ClassDeclaration)
+			{
+				exportAst =
+				{
+					type : 'ExportDeclarationAst',
+					kind : 'class',
+					loc,
+					declarations : [],
+					isDefault : false
+				}
+				
+				// ...
+
+			}
+			
+			assert(exportAst)
+			iegn.exports.push(exportAst)
+		}
+/*
+		{
+			const exportDeclarationAst: ExportDeclarationAst = 
+			{
+				type: 'ExportDeclarationAst',
+				kind: 'object',
+				isDefault: ts.isExportAssignment(statement),
+				declarations: [],
+			};
+	  
+			if (ts.isExportDeclaration(statement)) {
+			  if (statement.exportClause && ts.isNamedExports(statement.exportClause)) {
+				exportDeclarationAst.kind = 'object';
+				statement.exportClause.elements.forEach(element => {
+				  exportDeclarationAst.declarations.push({
+					name: element.name.text,
+					alias: element.propertyName?.text,
+				  });
+				});
+			  }
+			} else if (ts.isExportAssignment(statement)) {
+			  exportDeclarationAst.kind = 'object';
+			  exportDeclarationAst.declarations.push({
+				name: 'default',
+				alias: undefined,
+				initializer: statement.expression,
+			  });
+			}
+	  
+			iegn.exports.push(exportDeclarationAst);
+		}
+*/
 	}
 	
 	return iegn
