@@ -73,12 +73,13 @@ interface ExportDeclarationAst extends MetaAst
 {
 	type: 'ExportDeclarationAst';
 	kind: 'variable' | 'function' | 'function*' | 'class',
-	isDefault?: boolean;
+	isDefault: boolean;
 	declarations:
 	{
 		name?: string;
 		alias?: string;
 		kind?: 'const' | 'let' | 'var',
+		
 		//initializer?: any;
 		//isObjectPattern? boolean (in which case, there's no "name")
 		//isArrayPattern? boolean (in which case, there's no "name")
@@ -280,6 +281,8 @@ export async function parseImportExportStatements (source: TS.SourceFile, filepa
 		else if ('modifiers' in statement && Array.isArray(statement.modifiers) && statement.modifiers.some( (modifier) => modifier.kind == ts.SyntaxKind.ExportKeyword))
 		{
 			let exportAst: ExportDeclarationAst | undefined = undefined
+
+			const isDefault = statement.modifiers.some( (modifier) => modifier.kind == ts.SyntaxKind.DefaultKeyword)
 			
 			const loc =
 			{
@@ -313,9 +316,9 @@ export async function parseImportExportStatements (source: TS.SourceFile, filepa
 				{
 					type : 'ExportDeclarationAst',
 					kind : 'variable',
+					isDefault,
 					loc,
-					declarations,
-					isDefault : undefined
+					declarations
 				}
 			}
 			// If it's a function
@@ -327,6 +330,7 @@ export async function parseImportExportStatements (source: TS.SourceFile, filepa
 				{
 					type : 'ExportDeclarationAst',
 					kind : 'function',
+					isDefault,
 					loc,
 					declarations :
 					[
@@ -335,8 +339,7 @@ export async function parseImportExportStatements (source: TS.SourceFile, filepa
 							alias : undefined,
 							kind : undefined
 						}
-					],
-					isDefault : undefined
+					]
 				}
 			}
 			// If it's a function generator
@@ -348,6 +351,7 @@ export async function parseImportExportStatements (source: TS.SourceFile, filepa
 				{
 					type : 'ExportDeclarationAst',
 					kind : 'function*',
+					isDefault,
 					loc,
 					declarations :
 					[
@@ -356,8 +360,7 @@ export async function parseImportExportStatements (source: TS.SourceFile, filepa
 							alias : undefined,
 							kind : undefined
 						}
-					],
-					isDefault : undefined
+					]
 				}
 			}
 			// If it's a class
@@ -369,6 +372,7 @@ export async function parseImportExportStatements (source: TS.SourceFile, filepa
 				{
 					type : 'ExportDeclarationAst',
 					kind : 'class',
+					isDefault,
 					loc,
 					declarations :
 					[
@@ -377,47 +381,13 @@ export async function parseImportExportStatements (source: TS.SourceFile, filepa
 							alias : undefined,
 							kind : undefined
 						}
-					],
-					isDefault : undefined
-					
+					]
 				}
 			}
 			
 			assert(exportAst)
 			iegn.exports.push(exportAst)
 		}
-/*
-		{
-			const exportDeclarationAst: ExportDeclarationAst = 
-			{
-				type: 'ExportDeclarationAst',
-				kind: 'object',
-				isDefault: ts.isExportAssignment(statement),
-				declarations: [],
-			};
-	  
-			if (ts.isExportDeclaration(statement)) {
-			  if (statement.exportClause && ts.isNamedExports(statement.exportClause)) {
-				exportDeclarationAst.kind = 'object';
-				statement.exportClause.elements.forEach(element => {
-				  exportDeclarationAst.declarations.push({
-					name: element.name.text,
-					alias: element.propertyName?.text,
-				  });
-				});
-			  }
-			} else if (ts.isExportAssignment(statement)) {
-			  exportDeclarationAst.kind = 'object';
-			  exportDeclarationAst.declarations.push({
-				name: 'default',
-				alias: undefined,
-				initializer: statement.expression,
-			  });
-			}
-	  
-			iegn.exports.push(exportDeclarationAst);
-		}
-*/
 	}
 	
 	return iegn

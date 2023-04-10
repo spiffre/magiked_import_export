@@ -353,7 +353,7 @@ Deno.test("parseReexportStatements - example 6", async () =>
 
 // EXPORTING DECLARATION
 
-Deno.test("parseExportDeclarationStatements - example 1", async () =>
+Deno.test("parseExportDeclarationStatements - example 1", async () =>  // fixme: Handle object and array patterns ?
 {
 	const sourceCode = 'export const name1 = 1, name2 = 2'
 	const result = await parseImportExportStatementsFromString(sourceCode, 'whatever')
@@ -361,15 +361,13 @@ Deno.test("parseExportDeclarationStatements - example 1", async () =>
 
 	assertEquals(exportAst.type, "ExportDeclarationAst")
 	assertEquals(exportAst.kind, "variable")
-	assertEquals(exportAst.isDefault, undefined)
+	assertEquals(exportAst.isDefault, false)
 	assertEquals(exportAst.declarations,
 	[
 		{ name: "name1", alias: undefined, kind : 'const' },
 		{ name: "name2", alias: undefined, kind : 'const' },
 	])
 })
-
-// fixme: Handle object and array patterns ?
 
 Deno.test("parseExportDeclarationStatements - example 2", async () =>
 {
@@ -379,7 +377,7 @@ Deno.test("parseExportDeclarationStatements - example 2", async () =>
 
 	assertEquals(exportAst.type, "ExportDeclarationAst")
 	assertEquals(exportAst.kind, "function")
-	assertEquals(exportAst.isDefault, undefined)
+	assertEquals(exportAst.isDefault, false)
 	assertEquals(exportAst.declarations,
 	[
 		{
@@ -398,7 +396,7 @@ Deno.test("parseExportDeclarationStatements - example 3", async () =>
 
 	assertEquals(exportAst.type, "ExportDeclarationAst")
 	assertEquals(exportAst.kind, "function*")
-	assertEquals(exportAst.isDefault, undefined)
+	assertEquals(exportAst.isDefault, false)
 	assertEquals(exportAst.declarations,
 	[
 		{
@@ -417,7 +415,7 @@ Deno.test("parseExportDeclarationStatements - example 4", async () =>
 
 	assertEquals(exportAst.type, "ExportDeclarationAst")
 	assertEquals(exportAst.kind, "class")
-	assertEquals(exportAst.isDefault, undefined)
+	assertEquals(exportAst.isDefault, false)
 	assertEquals(exportAst.declarations,
 	[
 		{
@@ -431,9 +429,62 @@ Deno.test("parseExportDeclarationStatements - example 4", async () =>
 
 // EXPORTING DECLARATION (DEFAULT)
 
-// fixme: todo
+Deno.test("parseExportDeclarationStatements - example 2", async () =>
+{
+	const sourceCode = 'export default function functionName() { /* … */ }'
+	const result = await parseImportExportStatementsFromString(sourceCode, 'whatever')
+	const exportAst = result.exports[0]
 
+	assertEquals(exportAst.type, "ExportDeclarationAst")
+	assertEquals(exportAst.kind, "function")
+	assertEquals(exportAst.isDefault, true)
+	assertEquals(exportAst.declarations,
+	[
+		{
+			name: "functionName",
+			alias: undefined,
+			kind : undefined
+		}
+	])
+})
 
+Deno.test("parseExportDeclarationStatements - example 3", async () =>
+{
+	const sourceCode = 'export default function* generatorFunctionName() { /* … */ }'
+	const result = await parseImportExportStatementsFromString(sourceCode, 'whatever')
+	const exportAst = result.exports[0]
+
+	assertEquals(exportAst.type, "ExportDeclarationAst")
+	assertEquals(exportAst.kind, "function*")
+	assertEquals(exportAst.isDefault, true)
+	assertEquals(exportAst.declarations,
+	[
+		{
+			name: "generatorFunctionName",
+			alias: undefined,
+			kind : undefined
+		}
+	])
+})
+
+Deno.test("parseExportDeclarationStatements - example 4", async () =>
+{
+	const sourceCode = 'export default class ClassName { /* … */ }'
+	const result = await parseImportExportStatementsFromString(sourceCode, 'whatever')
+	const exportAst = result.exports[0]
+
+	assertEquals(exportAst.type, "ExportDeclarationAst")
+	assertEquals(exportAst.kind, "class")
+	assertEquals(exportAst.isDefault, true)
+	assertEquals(exportAst.declarations,
+	[
+		{
+			name: "ClassName",
+			alias: undefined,
+			kind: undefined
+		}
+	])
+})
 
 
 
